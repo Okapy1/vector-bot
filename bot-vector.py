@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # https://discordpy.readthedocs.io/en/latest/api.html
 # https://discordpy.readthedocs.io/en/latest/ext/commands/api.html

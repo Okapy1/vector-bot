@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # https://discordpy.readthedocs.io/en/latest/api.html
 # https://discordpy.readthedocs.io/en/latest/ext/commands/api.html
@@ -55,7 +56,7 @@ async def on_message(message):
         await message.channel.send('{0}'.format(message))
 
     # If keyword is found in sentence, send a message
-    if "ping" in message.content:
+    if " ping" or "ping " in message.content:
         await message.channel.send("pong")
 
     # Repeat sentence

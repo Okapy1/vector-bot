@@ -1,0 +1,6 @@
+# Token files
+*.key
+
+# System and log files
+*.out
+*.log

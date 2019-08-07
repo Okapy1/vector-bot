@@ -56,7 +56,7 @@ async def on_message(message):
         await message.channel.send('{0}'.format(message))
 
     # If keyword is found in sentence, send a message
-    if " ping" or "ping " in message.content:
+    if "ping" in message.content:
         await message.channel.send("pong")
 
     # Repeat sentence

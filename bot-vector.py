@@ -9,6 +9,7 @@ from discord.ext import commands
 import random
 import requests
 import json
+from lxml import html
 
 token = open("discord.key", "r").read()  # Discord token is saved in a text file.
 
@@ -17,6 +18,7 @@ print('Discord version: {0}'.format(discord.__version__))
 bot = commands.Bot(command_prefix='$')
 bot.remove_command('help')
 
+## Commit message : add web scraping (GBA profil)
 
 # ------- BOT FUNCTIONS --------------------------------------------
 
@@ -25,7 +27,7 @@ def random_line(fname):
     lines = open(fname, encoding='utf-8').read().splitlines()
     return random.choice(lines)
 
-# Weather
+# Weather (use API)
 def weather(city):
     # TODO : discord.errors.HTTPException: 400 BAD REQUEST (error code: 50006): Cannot send an empty message
     # city = "Paris,fr"
@@ -43,6 +45,46 @@ def weather(city):
     # return(meteo_name, meteo_desc, meteo_temp, meteo_temp_min, meteo_temp_max)
     return(u'Météo {0} : {1}, {2}°C (min={3}°, max={4}°)'.format(meteo_name, meteo_desc, meteo_temp, meteo_temp_min, meteo_temp_max))
 
+# Board Game Arena (scrape a web page)
+def bga_player(id):
+    bga_host = 'https://fr.boardgamearena.com/player?id='
+    my_id = id
+    my_url = '{0}{1}'.format(bga_host, my_id)
+    r = requests.get(my_url)
+    tree = html.fromstring(r.content)
+    # Manage error
+    bga_error = tree.xpath('//b[@id="bga_fatal_error_descr"]/text()')
+    if not bga_error:     # if bga_error is empty
+        # Scrape player information
+        my_pseudo = tree.xpath('//span[@id="player_name"]/text()')
+        my_pseudo = my_pseudo[0].strip()
+        my_status = tree.xpath('//div[@id="player_status"]/text()')
+        my_prestige = tree.xpath('//div[@id="pageheader_prestige"]/text()')
+        my_prestige = my_prestige[0].strip()
+        my_lastseen = tree.xpath('//div[@class="row-value"][@id="last_seen"]/text()')
+        my_reputation = tree.xpath('//div[@class="progressbar_content"]//span[@class="progressbar_valuename"]/text()')
+        my_reputation  = my_reputation[0].strip()
+        my_gamelist = tree.xpath('//div[@class="palmares_game"]//a[@class="gamename game_name"]/text()')
+        my_games = ', '.join(my_gamelist)
+        # Scrape player status
+        my_status = "Déconnecté"
+        my_lastseen = my_lastseen[0].strip()
+        if int(my_lastseen) < 2:    # in minutes
+            my_status = "En ligne"
+        # Return informations
+        ## TODO : afficher dans une box (discord.Embed)
+        ## TODO cf https://stackoverflow.com/questions/354883/how-do-i-return-multiple-values-from-a-function
+        return(u'{0} ({1}) :\n \
+            Prestige : {2}, Réputation : {3} \n \
+            Jeux : {4} \n \
+            Stats : {5}\n \
+            '.format(my_pseudo, my_status, my_prestige, my_reputation, my_games, my_url))
+    else:
+        # service error, player unknow...
+        return(u'Erreur : {0}'.format(bga_error[0].strip()))
+
+
+
 # ------- BOT EVENT ----------------------------------------------
 @bot.event
 async def on_ready():
@@ -56,13 +98,14 @@ async def on_message(message):
         await message.channel.send('{0}'.format(message))
 
     # If keyword is found in sentence, send a message
+    # TODO : pas dans les liens (images, documents)
     if "ping" in message.content:
         await message.channel.send("pong")
 
     # Repeat sentence
     if message.content.startswith('$echo'):
         echo_echo = str(message.content)
-        echo_echo = echo_echo[5:]       # Remove $echo to avoid infinite boucle
+        echo_echo = echo_echo[5:]       # Remove string "$echo" to avoid infinite boucle
         await message.channel.send('{0}'.format(echo_echo))
 
     # Send message if user respond hello
@@ -84,6 +127,7 @@ async def on_message(message):
 
     # Citation box (from text file)
     if message.content.startswith('$quote'):
+        # random citation from file
         quote = random_line('quote.txt')
         quote_txt = quote.split(';')[1]
         quote_author = quote.split(';')[0]
@@ -128,12 +172,26 @@ async def on_message(message):
             await message.channel.send("[Aide] Entrez le nom de la ville après la commande $weather")
         else:
             try:
+                # return Weather info
                 await message.channel.send(weather(city))
             except KeyError:
                 # await message.channel.send(city)
                 await message.channel.send("[erreur] ville inconnue: {0}".format(city))
     # return(u'Météo {0} : {1}, {2}°C (min={3}°, max={4}°)'.format(meteo_name, meteo_desc, meteo_temp, meteo_temp_min, meteo_temp_max))
 
+    # Game Board Arena
+    if message.content.startswith('$gba'):
+        gba_input = str(message.content)    # message_content is a dict
+        gba_player_id = gba_input[5:]              # we need a string without command '$gba'
+        if len(gba_player_id) == 0:
+            await message.channel.send("[Aide] Entrez l'id du joueur après la commande $gba")
+            await message.channel.send("[Aide] ex: Lord Nogard=85198715, bob2433=7194185")
+        else:
+            try:
+                # return GBA player info
+                await message.channel.send(bga_player(gba_player_id))
+            except KeyError:
+                await message.channel.send("[erreur] réessayer plus tard")
 
 
 # ------- BOT COMMAND --------------------------------------------
